@@ -13,6 +13,7 @@ export function FluidMeter(): FluidMeterInstance {
   let stop = false;
   let fpsInterval, startTime, then, elapsed;
 
+  // Updated options to include minValue and maxValue
   const options: FluidMeterOptions = {
     drawShadow: true,
     drawText: true,
@@ -27,6 +28,8 @@ export function FluidMeter(): FluidMeterInstance {
     borderWidth: 25,
     backgroundColor: '#e2e2e2',
     foregroundColor: '#fafafa',
+    minValue: 0, // Default minimum value
+    maxValue: 1000, // Default maximum value
   };
 
   let currentFillPercentage = 0;
@@ -335,8 +338,15 @@ export function FluidMeter(): FluidMeterInstance {
     }
   }
 
+  this.setLevel = function(level: number) {
+    level = clamp(level, options.minValue, options.maxValue);
+    fillPercentage = ((level - options.minValue) / (options.maxValue - options.minValue)) * 100;
+    bubblesLayer.amountLimit = Math.round(bubblesLayer.amount * (fillPercentage / 100));
+  };
+
   function drawText() {
-    const text = options.drawPercentageSign ? currentFillPercentage.toFixed(0) + '%' : currentFillPercentage.toFixed(0);
+    const actualValue = ((currentFillPercentage / 100) * (options.maxValue - options.minValue)) + options.minValue;
+    const text = `${actualValue.toFixed(0)}`; // Adjusted to display the actual value
 
     if (context) {
       context.save();
@@ -377,23 +387,22 @@ export function FluidMeter(): FluidMeterInstance {
   }
 
   function initOptions(envOptions: FluidMeterOptions): void {
-    options.drawShadow = envOptions.drawShadow === false ? false : true;
+    // Existing options initialization...
+    options.drawShadow = envOptions.drawShadow ?? true;
     options.size = envOptions.size;
     options.width = envOptions.width;
     options.height = envOptions.height;
-    options.drawBubbles = envOptions.drawBubbles === false ? false : true;
-    options.borderWidth = envOptions.borderWidth || options.borderWidth;
-    options.foregroundFluidColor = envOptions.foregroundFluidColor || options.foregroundFluidColor;
-    options.backgroundFluidColor = envOptions.backgroundFluidColor || options.backgroundFluidColor;
-    options.backgroundColor = envOptions.backgroundColor || options.backgroundColor;
-    options.foregroundColor = envOptions.foregroundColor || options.foregroundColor;
+    options.drawBubbles = envOptions.drawBubbles ?? true;
+    options.borderWidth = envOptions.borderWidth ?? options.borderWidth;
+    options.foregroundColor = envOptions.foregroundColor ?? options.foregroundColor;
+    options.backgroundColor = envOptions.backgroundColor ?? options.backgroundColor;
+    options.fontFillStyle = envOptions.fontFillStyle ?? options.fontFillStyle;
+    options.fontSize = envOptions.fontSize ?? options.fontSize;
+    options.fontFamily = envOptions.fontFamily ?? options.fontFamily;
 
-    options.drawText = envOptions.drawText === false ? false : true;
-    options.drawPercentageSign = envOptions.drawPercentageSign === false ? false : true;
-    options.fontSize = envOptions.fontSize || options.fontSize;
-    options.fontFamily = envOptions.fontFamily || options.fontFamily;
-    options.fontFillStyle = envOptions.fontFillStyle || options.fontFillStyle;
-    // fluid settings
+    // New options for minValue and maxValue
+    options.minValue = envOptions.minValue ?? 0;
+    options.maxValue = envOptions.maxValue ?? 100;
 
     if (envOptions.foregroundFluidLayer) {
       initLayerOptions(foregroundFluidLayer, envOptions.foregroundFluidLayer);
@@ -420,7 +429,7 @@ export function FluidMeter(): FluidMeterInstance {
       }
 
       targetContainer = env.targetContainer;
-      fillPercentage = clamp(env.fillPercentage, 0, 100);
+      this.setLevel(env.fillPercentage);
 
       if (env.options) {
         initOptions(env.options);
